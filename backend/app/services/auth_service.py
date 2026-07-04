@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
 from uuid import uuid4
@@ -10,6 +11,9 @@ from google.oauth2 import id_token
 
 from app.core.config import settings
 from app.models.schemas import AuthSession, AuthUser
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -33,8 +37,10 @@ def verify_google_credential(credential: str) -> AuthSession:
             credential,
             requests.Request(),
             settings.google_client_id,
+            clock_skew_in_seconds=30,
         )
     except Exception as exc:
+        logger.warning("Google credential verification failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google credential verification failed.",

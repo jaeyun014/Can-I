@@ -24,6 +24,7 @@ async def analyze_text(payload: TextAnalyzeRequest) -> AnalyzeResponse:
 async def analyze_image(
     file: UploadFile = File(...),
     region: str = Form(default="서울"),
+    itemName: str = Form(default=""),
     user: Optional[AuthUser] = Depends(get_optional_user),
 ) -> AnalyzeResponse:
     image_bytes = await file.read()
@@ -33,6 +34,7 @@ async def analyze_image(
         vision=vision_result,
         ocr=ocr_result,
         region=region,
+        user_query=itemName,
     )
     result = analyze_normalized(normalized)
     create_log(

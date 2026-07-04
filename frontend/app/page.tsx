@@ -40,7 +40,7 @@ export default function Home() {
   }, [session?.token]);
 
   function analyzeImage(fileToAnalyze: File) {
-    return analyzeByImage(fileToAnalyze, region, session?.token);
+    return analyzeByImage(fileToAnalyze, region, query.trim(), session?.token);
   }
 
   function handleLogin(nextSession: AuthSession) {

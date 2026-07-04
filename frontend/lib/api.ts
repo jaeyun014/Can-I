@@ -44,10 +44,13 @@ export function analyzeByText(query: string, region: string): Promise<AnalyzeRes
   });
 }
 
-export function analyzeByImage(file: File, region: string, token?: string | null): Promise<AnalyzeResult> {
+export function analyzeByImage(file: File, region: string, itemName = "", token?: string | null): Promise<AnalyzeResult> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("region", region);
+  if (itemName.trim()) {
+    formData.append("itemName", itemName.trim());
+  }
 
   return request<AnalyzeResult>("/api/analyze/image", {
     method: "POST",

@@ -3,9 +3,11 @@ import { AnalysisEvidence } from "./AnalysisEvidence";
 import { RiskBadge } from "./RiskBadge";
 import { WhyToggle } from "./WhyToggle";
 
-const order = ["microwave", "airFryer", "oven", "freezer", "dishwasher"];
+const order = ["microwave", "airFryer", "oven", "freezer", "refrigerator", "dishwasher", "foodWaste", "generalWaste"];
 
 export function ResultCard({ result }: { result: AnalyzeResult }) {
+  const displayOrder = [...order, ...Object.keys(result.decisions).filter((key) => !order.includes(key))];
+
   return (
     <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-stone-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -22,7 +24,7 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
       </div>
 
       <div className="mt-5 grid gap-4">
-        {order.map((key) => {
+        {displayOrder.filter((key) => result.decisions[key]).map((key) => {
           const decision = result.decisions[key];
           return (
             <article key={key} className="rounded-md border border-stone-200 bg-stone-50 p-4">

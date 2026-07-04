@@ -55,8 +55,9 @@ async def analyze_image_with_vision(image_bytes: bytes, content_type: str | None
                             "type": "input_text",
                             "text": (
                                 "이미지 속 물건과 재질 표기를 추출해 JSON으로만 답하세요. "
-                                "최종 안전 판단은 하지 마세요. 재질이 불확실하면 detectedMaterial은 unknown으로 두세요. "
-                                "가능한 재질 값: aluminum, pp, pet, ps, paper_coated, glass, lithium_battery, wood, unknown."
+                                "최종 안전 판단은 하지 마세요. 음식으로 보이면 objectType은 food로, detectedMaterial은 food로 두세요. "
+                                "재질이 불확실하면 detectedMaterial은 unknown으로 두세요. "
+                                "가능한 재질 값: aluminum, pp, pet, ps, paper_coated, glass, lithium_battery, wood, food, unknown."
                             ),
                         },
                         {"type": "input_image", "image_url": data_url, "detail": "low"},
