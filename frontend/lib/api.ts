@@ -1,9 +1,30 @@
 import type { AnalyzeResult, UsageLog } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+function getApiBaseUrl() {
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+    return `http://${window.location.hostname}:8000`;
+  }
+
+  return "http://localhost:8000";
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const API_BASE_URL = getApiBaseUrl();
+  const url = `${API_BASE_URL}${path}`;
+  let response: Response;
+
+  try {
+    response = await fetch(url, init);
+  } catch (error) {
+    throw new Error(
+      `API 서버에 연결하지 못했습니다. 백엔드가 켜져 있는지 확인하세요. 호출 주소: ${url}`
+    );
+  }
+
   if (!response.ok) {
     const message = await response.text();
     throw new Error(message || "API request failed");

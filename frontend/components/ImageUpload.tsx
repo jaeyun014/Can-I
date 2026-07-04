@@ -31,19 +31,31 @@ export function ImageUpload({ file, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex h-44 flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-white/80 text-center">
+      <div className="flex h-56 flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-white/80 text-center md:h-64">
         {preview ? (
           <img src={preview} alt="선택된 이미지 미리보기" className="h-full w-full rounded-lg object-cover" />
         ) : (
           <>
-            <ImagePlus className="mb-2 h-8 w-8 text-mint" aria-hidden />
-            <span className="text-sm font-semibold text-ink">사진 선택</span>
-            <span className="mt-1 text-xs text-stone-500">이미지는 현재 stub 분석으로 처리됩니다.</span>
+            <ImagePlus className="mb-3 h-10 w-10 text-mint" aria-hidden />
+            <span className="text-base font-bold text-ink">사진을 찍거나 이미지를 선택하세요</span>
+            <span className="mt-1 text-xs text-stone-500">OCR과 Vision 결과를 Rule Engine으로 판단합니다.</span>
           </>
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3">
+        <label className="inline-flex h-14 cursor-pointer items-center justify-center gap-3 rounded-md bg-ink px-4 text-base font-black text-white transition hover:bg-mint">
+          <Camera className="h-6 w-6" aria-hidden />
+          사진 촬영
+          <input
+            className="sr-only"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => handleImage(event.target.files)}
+          />
+        </label>
+
         <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-3 text-sm font-bold text-stone-700 transition hover:border-mint hover:text-mint">
           <Upload className="h-4 w-4" aria-hidden />
           파일 선택
@@ -51,18 +63,6 @@ export function ImageUpload({ file, onChange }: Props) {
             className="sr-only"
             type="file"
             accept="image/*"
-            onChange={(event) => handleImage(event.target.files)}
-          />
-        </label>
-
-        <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-stone-300 bg-white px-3 text-sm font-bold text-stone-700 transition hover:border-mint hover:text-mint">
-          <Camera className="h-4 w-4" aria-hidden />
-          사진 촬영
-          <input
-            className="sr-only"
-            type="file"
-            accept="image/*"
-            capture="environment"
             onChange={(event) => handleImage(event.target.files)}
           />
         </label>

@@ -13,7 +13,7 @@ import type { AnalyzeResult, UsageLog } from "@/lib/types";
 
 export default function Home() {
   const [query, setQuery] = useState("");
-  const [region, setRegion] = useState("서울");
+  const [region, setRegion] = useState("서울특별시 강남구");
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [logs, setLogs] = useState<UsageLog[]>([]);
@@ -41,7 +41,9 @@ export default function Home() {
     try {
       const analyzed = file ? await analyzeImage(file) : await analyzeByText(query.trim(), region);
       setResult(analyzed);
-      await saveLog(analyzed);
+      if (!file) {
+        await saveLog(analyzed);
+      }
       setLogs(await getLogs());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "분석 중 오류가 발생했습니다.");
@@ -51,15 +53,15 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <section className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+    <main className="min-h-screen px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-md md:max-w-6xl">
+        <section className="grid gap-6 md:grid-cols-2 md:items-start lg:gap-8">
           <div className="space-y-6">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-mint">Can I?</p>
-              <h1 className="mt-3 text-4xl font-black leading-tight text-ink sm:text-5xl">이거 해도 돼?</h1>
-              <p className="mt-4 text-xl font-semibold text-stone-700">사진 한 장으로 생활 속 안전 판단을 도와드립니다.</p>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-stone-600">
+            <div className="pt-2">
+              <p className="text-2xl font-black text-ink">Can I?</p>
+              <h1 className="mt-4 text-4xl font-black leading-tight text-ink sm:text-5xl">이거 해도 돼?</h1>
+              <p className="mt-4 text-lg font-semibold text-stone-700">사진 한 장으로 생활 속 안전 판단을 도와드립니다.</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base sm:leading-7">
                 전자레인지, 에어프라이어, 냉동보관, 식기세척기, 분리수거까지 한 번에 확인하세요.
               </p>
             </div>
@@ -67,8 +69,8 @@ export default function Home() {
             <form onSubmit={handleAnalyze} className="rounded-lg border border-stone-200 bg-white/90 p-5 shadow-sm backdrop-blur">
               <div className="grid gap-5">
                 <ImageUpload file={file} onChange={setFile} />
-                <TextQueryForm value={query} onChange={setQuery} />
                 <RegionSelect value={region} onChange={setRegion} />
+                <TextQueryForm value={query} onChange={setQuery} />
                 {error ? (
                   <div className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -89,15 +91,15 @@ export default function Home() {
             <UsageLogList logs={logs} />
           </div>
 
-          <div className="lg:sticky lg:top-8">
+          <div className="md:sticky md:top-6">
             {result ? (
               <ResultCard result={result} />
             ) : (
               <section className="rounded-lg border border-stone-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-bold text-ink">시연 예시</h2>
+                <h2 className="text-xl font-bold text-ink">사진을 찍으면 바로 판단합니다</h2>
                 <div className="mt-4 grid gap-3 text-sm leading-6 text-stone-700">
-                  <p>알루미늄 포일을 입력하면 전자레인지 위험, 에어프라이어 주의, 오븐 사용 가능 여부를 확인할 수 있습니다.</p>
-                  <p>사진을 선택하면 현재 MVP에서는 플라스틱 배달 용기 stub 결과로 분석됩니다.</p>
+                  <p>왼쪽에서 사진 촬영 또는 파일 선택 후 분석하면 OCR, Vision 근거와 Rule Engine 결과가 이 영역에 표시됩니다.</p>
+                  <p>OpenAI API Key가 없으면 fallback 분석으로 서비스 흐름을 유지합니다.</p>
                 </div>
               </section>
             )}

@@ -1,5 +1,7 @@
 import type { AnalyzeResult } from "@/lib/types";
+import { AnalysisEvidence } from "./AnalysisEvidence";
 import { RiskBadge } from "./RiskBadge";
+import { WhyToggle } from "./WhyToggle";
 
 const order = ["microwave", "airFryer", "oven", "freezer", "dishwasher"];
 
@@ -12,6 +14,7 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
           <h2 className="mt-1 text-2xl font-bold text-ink">{result.itemName}</h2>
           <p className="mt-2 text-sm text-stone-600">
             감지 재질: <span className="font-semibold">{result.detectedMaterial}</span>
+            {result.objectType ? <span> · 유형: {result.objectType}</span> : null}
             {result.ocrText ? <span> · OCR: {result.ocrText}</span> : null}
           </p>
         </div>
@@ -35,10 +38,7 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
                   <span className="font-semibold text-ink">이유: </span>
                   {decision.reason}
                 </p>
-                <p>
-                  <span className="font-semibold text-ink">왜 그런가요: </span>
-                  {decision.why}
-                </p>
+                <WhyToggle status={decision.status} why={decision.why} />
                 <p>
                   <span className="font-semibold text-ink">대체 행동: </span>
                   {decision.alternative}
@@ -48,6 +48,8 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
           );
         })}
       </div>
+
+      <AnalysisEvidence evidence={result.evidence} confidence={result.confidence} objectType={result.objectType} />
 
       <div className="mt-5 rounded-md border border-mint/20 bg-emerald-50 p-4">
         <div className="flex flex-wrap items-center gap-2">

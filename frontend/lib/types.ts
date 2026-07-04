@@ -15,11 +15,20 @@ export type Disposal = {
   instruction: string;
 };
 
+export type Evidence = {
+  vision: string;
+  ocr: string;
+  rule: string;
+};
+
 export type AnalyzeResult = {
   itemName: string;
   detectedMaterial: string;
+  objectType?: string;
   ocrText: string;
   region: string;
+  confidence?: number;
+  evidence?: Evidence;
   overallRisk: RiskStatus;
   decisions: Record<string, Decision>;
   disposal: Disposal;

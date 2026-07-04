@@ -13,6 +13,8 @@ frontend/out/
 .env
 backend/.env
 frontend/.env.local
+.dev-pids/
+.dev-logs/
 
 # OS/editor
 .DS_Store
