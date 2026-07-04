@@ -41,4 +41,16 @@ export type UsageLog = {
   region: string;
   overallRisk: RiskStatus;
   createdAt: string;
+  userEmail?: string | null;
+};
+
+export type AuthUser = {
+  email: string;
+  name: string;
+  picture: string;
+};
+
+export type AuthSession = {
+  token: string;
+  user: AuthUser;
 };

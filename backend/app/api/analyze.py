@@ -1,8 +1,12 @@
-from fastapi import APIRouter, File, Form, UploadFile
+from __future__ import annotations
 
-from app.models.schemas import AnalyzeResponse, TextAnalyzeRequest
-from app.models.schemas import UsageLogCreate
+from typing import Optional
+
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+
+from app.models.schemas import AnalyzeResponse, AuthUser, TextAnalyzeRequest, UsageLogCreate
 from app.api.logs import create_log
+from app.services.auth_service import get_optional_user
 from app.services.input_normalizer import normalize_image_input
 from app.services.ocr_service import extract_text_from_image_bytes
 from app.services.rule_engine import analyze_item, analyze_normalized
@@ -20,6 +24,7 @@ async def analyze_text(payload: TextAnalyzeRequest) -> AnalyzeResponse:
 async def analyze_image(
     file: UploadFile = File(...),
     region: str = Form(default="서울"),
+    user: Optional[AuthUser] = Depends(get_optional_user),
 ) -> AnalyzeResponse:
     image_bytes = await file.read()
     ocr_result = extract_text_from_image_bytes(image_bytes)
@@ -36,6 +41,7 @@ async def analyze_image(
             detectedMaterial=result.detectedMaterial,
             region=result.region,
             overallRisk=result.overallRisk,
-        )
+        ),
+        user=user,
     )
     return result

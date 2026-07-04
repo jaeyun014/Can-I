@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -82,3 +84,19 @@ class UsageLogCreate(BaseModel):
 class UsageLog(UsageLogCreate):
     id: int
     createdAt: datetime
+    userEmail: Optional[str] = None
+
+
+class GoogleLoginRequest(BaseModel):
+    credential: str
+
+
+class AuthUser(BaseModel):
+    email: str
+    name: str = ""
+    picture: str = ""
+
+
+class AuthSession(BaseModel):
+    token: str
+    user: AuthUser

@@ -6,6 +6,7 @@ PID_DIR="$ROOT_DIR/.dev-pids"
 LOG_DIR="$ROOT_DIR/.dev-logs"
 BACKEND_PID="$PID_DIR/backend.pid"
 FRONTEND_PID="$PID_DIR/frontend.pid"
+HOST="${CAN_I_HOST:-127.0.0.1}"
 
 mkdir -p "$PID_DIR" "$LOG_DIR"
 
@@ -16,7 +17,7 @@ is_running() {
 
 port_pids() {
   local port="$1"
-  lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true
+  lsof -tiTCP:"$port" 2>/dev/null || true
 }
 
 stop_port() {
@@ -27,6 +28,14 @@ stop_port() {
   if [[ -n "$pids" ]]; then
     echo "Stopping process on port $port: $pids"
     kill $pids 2>/dev/null || true
+    sleep 1
+  fi
+
+  pids="$(port_pids "$port")"
+  if [[ -n "$pids" ]]; then
+    echo "Force stopping process on port $port: $pids"
+    kill -9 $pids 2>/dev/null || true
+    sleep 1
   fi
 }
 
@@ -52,7 +61,7 @@ start_backend() {
 
   stop_port 8000
 
-  if [[ ! -x "$ROOT_DIR/backend/venv/bin/uvicorn" ]]; then
+  if [[ ! -x "$ROOT_DIR/backend/venv/bin/python" ]]; then
     echo "Backend venv is missing. Run: cd backend && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
     exit 1
   fi
@@ -60,7 +69,7 @@ start_backend() {
   echo "Starting backend on http://localhost:8000"
   (
     cd "$ROOT_DIR/backend"
-    venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    exec venv/bin/python -m uvicorn app.main:app --host "$HOST" --port 8000
   ) >"$LOG_DIR/backend.log" 2>&1 &
   echo $! > "$BACKEND_PID"
 }
@@ -82,7 +91,7 @@ start_frontend() {
   echo "Starting frontend on http://localhost:3000"
   (
     cd "$ROOT_DIR/frontend"
-    npm run dev -- --hostname 0.0.0.0
+    exec npm run dev -- --hostname "$HOST"
   ) >"$LOG_DIR/frontend.log" 2>&1 &
   echo $! > "$FRONTEND_PID"
 }
@@ -102,6 +111,7 @@ show_urls() {
   echo ""
   echo "Open on this Mac: http://localhost:3000"
   echo "Backend health:   http://localhost:8000/health"
+  echo "Host binding:     $HOST"
   echo ""
   echo "Logs:"
   echo "  tail -f .dev-logs/frontend.log"
@@ -131,6 +141,7 @@ case "${1:-start}" in
     frontend_ports="$(port_pids 3000)"
     [[ -n "$backend_ports" ]] && echo "port 8000: in use ($backend_ports)"
     [[ -n "$frontend_ports" ]] && echo "port 3000: in use ($frontend_ports)"
+    true
     ;;
   logs)
     echo "== backend =="

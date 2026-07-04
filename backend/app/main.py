@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import analyze, logs
+from app.api import analyze, auth, logs
 from app.core.config import settings
 
 app = FastAPI(
@@ -26,4 +26,5 @@ def health_check() -> dict[str, str]:
 
 
 app.include_router(analyze.router, prefix="/api", tags=["analyze"])
+app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(logs.router, prefix="/api", tags=["logs"])

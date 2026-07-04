@@ -15,6 +15,8 @@ AI 기반 생활 안전 도우미 서비스 MVP입니다. 사용자가 사진을
 - 분리수거 안내
 - `왜 안돼?` 상세 설명 토글
 - 분석 근거 표시
+- Google 계정 로그인
+- 계정별 검색 기록 저장/조회/삭제
 - 최근 사용 로그
 
 ## 프로젝트 구조
@@ -67,8 +69,8 @@ make logs     # 최근 로그 확인
 `make dev`는 다음을 자동으로 처리합니다.
 
 - 기존 3000/8000 포트 프로세스 정리
-- 백엔드 `0.0.0.0:8000` 실행
-- 프론트엔드 `0.0.0.0:3000` 실행
+- 백엔드 `127.0.0.1:8000` 실행
+- 프론트엔드 `127.0.0.1:3000` 실행
 - `frontend/.next` 삭제 후 재생성
 
 이 방식은 Next dev 서버와 `npm run build`가 같은 `.next` 폴더를 건드리며 생기는 스타일 깨짐 문제를 줄입니다.
@@ -80,12 +82,12 @@ make logs     # 최근 로그 확인
 ```bash
 cd backend
 source venv/bin/activate
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ```bash
 cd frontend
-npm run dev -- --hostname 0.0.0.0
+npm run dev -- --hostname 127.0.0.1
 ```
 
 주의: 터미널에 보이는 `http://0.0.0.0:3000`은 접속용 주소가 아닙니다. 브라우저에서는 `http://localhost:3000` 또는 Mac의 실제 IP를 사용하세요.
@@ -94,7 +96,7 @@ npm run dev -- --hostname 0.0.0.0
 
 휴대폰에서 테스트하려면 Mac과 휴대폰이 같은 네트워크에 있어야 합니다.
 
-1. `make dev`로 서버를 실행합니다.
+1. `CAN_I_HOST=0.0.0.0 make dev`로 서버를 실행합니다.
 2. Mac의 IP 주소를 확인합니다.
 3. 휴대폰 브라우저에서 접속합니다.
 
@@ -147,6 +149,7 @@ Image Upload / Camera Capture
 OPENAI_API_KEY=
 VISION_MODEL=gpt-4o-mini
 OCR_ENGINE=tesseract
+GOOGLE_CLIENT_ID=
 CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
 ```
 
@@ -154,11 +157,53 @@ CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=
 ```
 
 일반 로컬 개발에서는 프론트 환경변수를 비워둬도 됩니다. 비워두면 브라우저 접속 hostname을 기준으로 API 주소를 자동 선택합니다.
 
 `OPENAI_API_KEY`가 없으면 GPT Vision 호출은 fallback stub로 동작하며 서버는 죽지 않습니다.
+
+## Google 로그인 설정
+
+Google 로그인은 프론트엔드가 Google Identity Services로 ID 토큰을 받고, 백엔드가 `google-auth`로 토큰을 검증한 뒤 앱 내부 세션 토큰을 발급하는 구조입니다.
+
+Google Cloud Console에서 OAuth Client ID를 만든 뒤 같은 Client ID를 백엔드와 프론트에 넣습니다.
+
+```env
+# backend/.env
+GOOGLE_CLIENT_ID=구글_OAuth_Client_ID
+
+# frontend/.env.local
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=구글_OAuth_Client_ID
+```
+
+Google OAuth Client의 Authorized JavaScript origins에는 개발 주소를 추가하세요.
+
+```txt
+http://localhost:3000
+http://127.0.0.1:3000
+```
+
+휴대폰에서 Mac IP로 테스트한다면 해당 주소도 추가해야 합니다.
+
+```txt
+http://맥IP:3000
+```
+
+예:
+
+```txt
+http://192.168.0.12:3000
+```
+
+설정 후 서버를 재시작합니다.
+
+```bash
+make restart
+```
+
+로그인하지 않은 상태에서도 분석은 가능합니다. 로그인하면 검색 기록이 해당 Google 계정 기준으로 저장되고, `내역 삭제` 버튼으로 본인 계정 기록만 삭제할 수 있습니다.
 
 ## OCR 안내
 
@@ -224,6 +269,9 @@ Tesseract가 없거나 한국어 언어팩이 없어도 서버는 죽지 않고 
 - 결과 카드: `frontend/components/ResultCard.tsx`
 - 왜 안돼 토글: `frontend/components/WhyToggle.tsx`
 - 분석 근거: `frontend/components/AnalysisEvidence.tsx`
+- Google 로그인: `frontend/components/GoogleLoginButton.tsx`
+- Google 인증 검증: `backend/app/services/auth_service.py`
+- 계정별 로그 API: `backend/app/api/logs.py`
 
 ## 문제 해결
 

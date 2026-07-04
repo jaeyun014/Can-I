@@ -3,13 +3,16 @@
 import { AlertCircle, Camera, Loader2, Search } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
+import { GoogleLoginButton } from "@/components/GoogleLoginButton";
 import { ImageUpload } from "@/components/ImageUpload";
 import { RegionSelect } from "@/components/RegionSelect";
 import { ResultCard } from "@/components/ResultCard";
 import { TextQueryForm } from "@/components/TextQueryForm";
 import { UsageLogList } from "@/components/UsageLogList";
-import { analyzeByImage, analyzeByText, getLogs, saveLog } from "@/lib/api";
-import type { AnalyzeResult, UsageLog } from "@/lib/types";
+import { analyzeByImage, analyzeByText, deleteLogs, getLogs, saveLog } from "@/lib/api";
+import type { AnalyzeResult, AuthSession, UsageLog } from "@/lib/types";
+
+const SESSION_STORAGE_KEY = "can-i-auth-session";
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -17,15 +20,46 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [logs, setLogs] = useState<UsageLog[]>([]);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    getLogs().then(setLogs).catch(() => setLogs([]));
+    const savedSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (savedSession) {
+      try {
+        setSession(JSON.parse(savedSession) as AuthSession);
+      } catch {
+        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    }
   }, []);
 
+  useEffect(() => {
+    getLogs(session?.token).then(setLogs).catch(() => setLogs([]));
+  }, [session?.token]);
+
   function analyzeImage(fileToAnalyze: File) {
-    return analyzeByImage(fileToAnalyze, region);
+    return analyzeByImage(fileToAnalyze, region, session?.token);
+  }
+
+  function handleLogin(nextSession: AuthSession) {
+    setSession(nextSession);
+    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+  }
+
+  function handleLogout() {
+    setSession(null);
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    setLogs([]);
+  }
+
+  async function handleDeleteLogs() {
+    if (!session) {
+      return;
+    }
+    await deleteLogs(session.token);
+    setLogs([]);
   }
 
   async function handleAnalyze(event: FormEvent<HTMLFormElement>) {
@@ -42,9 +76,9 @@ export default function Home() {
       const analyzed = file ? await analyzeImage(file) : await analyzeByText(query.trim(), region);
       setResult(analyzed);
       if (!file) {
-        await saveLog(analyzed);
+        await saveLog(analyzed, session?.token);
       }
-      setLogs(await getLogs());
+      setLogs(await getLogs(session?.token));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "분석 중 오류가 발생했습니다.");
     } finally {
@@ -65,6 +99,8 @@ export default function Home() {
                 전자레인지, 에어프라이어, 냉동보관, 식기세척기, 분리수거까지 한 번에 확인하세요.
               </p>
             </div>
+
+            <GoogleLoginButton session={session} onLogin={handleLogin} onLogout={handleLogout} />
 
             <form onSubmit={handleAnalyze} className="rounded-lg border border-stone-200 bg-white/90 p-5 shadow-sm backdrop-blur">
               <div className="grid gap-5">
@@ -88,7 +124,7 @@ export default function Home() {
               </div>
             </form>
 
-            <UsageLogList logs={logs} />
+            <UsageLogList logs={logs} isLoggedIn={Boolean(session)} onDeleteAll={handleDeleteLogs} />
           </div>
 
           <div className="md:sticky md:top-6">

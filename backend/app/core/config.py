@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     vision_model: str = "gpt-4o-mini"
     ocr_engine: str = "tesseract"
+    google_client_id: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

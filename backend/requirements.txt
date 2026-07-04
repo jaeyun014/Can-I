@@ -5,3 +5,5 @@ python-multipart==0.0.20
 openai==2.14.0
 pillow==11.3.0
 pytesseract==0.3.13
+google-auth>=2.29.0,<3
+requests>=2.32.0,<3
