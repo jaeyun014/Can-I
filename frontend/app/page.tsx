@@ -24,6 +24,10 @@ export default function Home() {
     getLogs().then(setLogs).catch(() => setLogs([]));
   }, []);
 
+  function analyzeImage(fileToAnalyze: File) {
+    return analyzeByImage(fileToAnalyze, region);
+  }
+
   async function handleAnalyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -35,7 +39,7 @@ export default function Home() {
 
     setIsLoading(true);
     try {
-      const analyzed = file ? await analyzeByImage(file, region) : await analyzeByText(query.trim(), region);
+      const analyzed = file ? await analyzeImage(file) : await analyzeByText(query.trim(), region);
       setResult(analyzed);
       await saveLog(analyzed);
       setLogs(await getLogs());
