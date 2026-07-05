@@ -13,7 +13,7 @@ type Props = {
 export function WhyToggle({ status, why }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  if (status === "SAFE") {
+  if (status !== "WARNING") {
     return null;
   }
 

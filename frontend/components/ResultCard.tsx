@@ -1,6 +1,7 @@
 import type { AnalyzeResult } from "@/lib/types";
 import { AnalysisEvidence } from "./AnalysisEvidence";
 import { RiskBadge } from "./RiskBadge";
+import { RiskScenarioToggle } from "./RiskScenarioToggle";
 import { WhyToggle } from "./WhyToggle";
 
 const order = ["microwave", "airFryer", "oven", "freezer", "refrigerator", "dishwasher", "foodWaste", "generalWaste"];
@@ -41,6 +42,7 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
                   {decision.reason}
                 </p>
                 <WhyToggle status={decision.status} why={decision.why} />
+                <RiskScenarioToggle decision={decision} />
                 <p>
                   <span className="font-semibold text-ink">대체 행동: </span>
                   {decision.alternative}
