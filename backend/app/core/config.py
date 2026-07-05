@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     vision_model: str = "gpt-4o-mini"
     ocr_engine: str = "tesseract"
     google_client_id: str = ""
+    database_url: str = "sqlite:///can_i.db"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

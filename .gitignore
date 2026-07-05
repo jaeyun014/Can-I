@@ -13,6 +13,8 @@ frontend/tsconfig.tsbuildinfo
 # Local env
 .env
 backend/.env
+backend/can_i.db
+backend/can_i.db-*
 frontend/.env.local
 .dev-pids/
 .dev-logs/

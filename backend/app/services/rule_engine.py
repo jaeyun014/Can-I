@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app.models.schemas import AnalyzeResponse, NormalizedInput
+from app.services.confidence_service import apply_conservative_conflict_policy, build_confidence_report
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 SERVICE_KEYS = ["microwave", "airFryer", "oven", "freezer", "dishwasher"]
@@ -119,7 +120,7 @@ def _fallback_rule(item_name: str) -> dict[str, Any]:
         "allowed": False,
         "reason": "아직 등록되지 않은 물건이라 정확한 안전 판단이 어렵습니다.",
         "why": "재질과 코팅 여부에 따라 가열, 냉동, 세척 가능 여부가 크게 달라질 수 있습니다.",
-        "alternative": "제품 표기나 제조사 안내를 확인하고, 확실하지 않다면 해당 기기 사용을 피하세요.",
+        "alternative": "재질 표기, 제품 설명서, 안전 마크를 확인하세요. 불확실하면 가열하지 않는 것이 안전합니다.",
     }
     return {
         "itemName": item_name or "알 수 없는 물건",
@@ -225,8 +226,16 @@ def analyze_food_item(item_name: str, region: str, object_type: str = "", detect
 
 def analyze_item(item_name: str, region: str, detected_material: str | None = None, ocr_text: str = "") -> AnalyzeResponse:
     """Analyze an item with JSON rules, keeping AI output out of final judgment."""
+    text_context = NormalizedInput(
+        itemName=item_name or "알 수 없는 물건",
+        material=detected_material or "unknown",
+        region=region,
+        ocrText=ocr_text,
+        userQuery=item_name,
+    )
     food_result = analyze_food_item(item_name=item_name, region=region, detected_material=detected_material, ocr_text=ocr_text)
     if food_result:
+        food_result.confidence = build_confidence_report(food_result, text_context)
         return food_result
 
     rule = _find_rule(item_name, detected_material) or _fallback_rule(item_name)
@@ -249,7 +258,7 @@ def analyze_item(item_name: str, region: str, detected_material: str | None = No
             highest_risk = decision["status"]
 
     category = rule["disposal"]["category"]
-    return AnalyzeResponse(
+    result = AnalyzeResponse(
         itemName=rule["itemName"],
         detectedMaterial=rule["detectedMaterial"],
         ocrText=ocr_text,
@@ -262,6 +271,8 @@ def analyze_item(item_name: str, region: str, detected_material: str | None = No
             "instruction": rule["disposal"]["instruction"],
         },
     )
+    result.confidence = build_confidence_report(result, text_context)
+    return result
 
 
 def analyze_normalized(normalized: NormalizedInput) -> AnalyzeResponse:
@@ -273,10 +284,11 @@ def analyze_normalized(normalized: NormalizedInput) -> AnalyzeResponse:
         ocr_text=normalized.ocrText,
     )
     if food_result:
-        food_result.confidence = normalized.confidence
         food_result.evidence = normalized.evidence
         if not food_result.evidence.rule:
             food_result.evidence.rule = "food_storage_rule 규칙과 매칭되었습니다."
+        food_result.confidence = build_confidence_report(food_result, normalized)
+        apply_conservative_conflict_policy(food_result)
         return food_result
 
     result = analyze_item(
@@ -287,8 +299,9 @@ def analyze_normalized(normalized: NormalizedInput) -> AnalyzeResponse:
     )
     _apply_safety_hints(result, normalized.safetyHints)
     result.objectType = normalized.objectType
-    result.confidence = normalized.confidence
     result.evidence = normalized.evidence
+    result.confidence = build_confidence_report(result, normalized)
+    apply_conservative_conflict_policy(result)
     return result
 
 

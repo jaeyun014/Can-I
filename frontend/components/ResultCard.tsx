@@ -1,13 +1,19 @@
 import type { AnalyzeResult } from "@/lib/types";
 import { AnalysisEvidence } from "./AnalysisEvidence";
+import { ConfidenceBadge } from "./ConfidenceBadge";
+import { FeedbackPanel } from "./FeedbackPanel";
+import { InputQualityPanel } from "./InputQualityPanel";
 import { RiskBadge } from "./RiskBadge";
 import { RiskScenarioToggle } from "./RiskScenarioToggle";
 import { WhyToggle } from "./WhyToggle";
 
 const order = ["microwave", "airFryer", "oven", "freezer", "refrigerator", "dishwasher", "foodWaste", "generalWaste"];
 
-export function ResultCard({ result }: { result: AnalyzeResult }) {
+export function ResultCard({ result, token }: { result: AnalyzeResult; token?: string | null }) {
   const displayOrder = [...order, ...Object.keys(result.decisions).filter((key) => !order.includes(key))];
+  const captureRequest = result.additionalCaptureRequest as
+    | { required?: boolean; instructions?: string[] }
+    | undefined;
 
   return (
     <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
@@ -23,6 +29,21 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
         </div>
         <RiskBadge status={result.overallRisk} />
       </div>
+
+      <div className="mt-4">
+        <ConfidenceBadge confidence={result.confidence} />
+      </div>
+
+      {captureRequest?.required && captureRequest.instructions?.length ? (
+        <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          <p className="font-bold text-ink">추가 촬영 안내</p>
+          <ul className="mt-2 grid gap-1">
+            {captureRequest.instructions.map((instruction) => (
+              <li key={instruction}>- {instruction}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-4">
         {displayOrder.filter((key) => result.decisions[key]).map((key) => {
@@ -55,6 +76,8 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
 
       <AnalysisEvidence evidence={result.evidence} confidence={result.confidence} objectType={result.objectType} />
 
+      <InputQualityPanel result={result} />
+
       <div className="mt-5 rounded-md border border-mint/20 bg-emerald-50 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-bold text-ink">분리수거</h3>
@@ -63,6 +86,8 @@ export function ResultCard({ result }: { result: AnalyzeResult }) {
         <p className="mt-3 text-sm leading-6 text-stone-700">{result.disposal.regionRule}</p>
         <p className="mt-2 text-sm leading-6 text-stone-700">{result.disposal.instruction}</p>
       </div>
+
+      <FeedbackPanel result={result} token={token} />
     </section>
   );
 }

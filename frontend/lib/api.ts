@@ -1,4 +1,4 @@
-import type { AnalyzeResult, AuthSession, UsageLog } from "./types";
+import type { AnalyzeResult, AuthSession, FeedbackPayload, FeedbackRecord, ReviewQueueItem, UsageLog } from "./types";
 
 function getApiBaseUrl() {
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
@@ -44,12 +44,36 @@ export function analyzeByText(query: string, region: string): Promise<AnalyzeRes
   });
 }
 
-export function analyzeByImage(file: File, region: string, itemName = "", token?: string | null): Promise<AnalyzeResult> {
+export function analyzeByImage(files: File[], region: string, itemName = "", token?: string | null): Promise<AnalyzeResult> {
   const formData = new FormData();
-  formData.append("file", file);
+  files.forEach((file) => formData.append("files", file));
   formData.append("region", region);
   if (itemName.trim()) {
     formData.append("itemName", itemName.trim());
+  }
+
+  return request<AnalyzeResult>("/api/analyze/image", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: formData
+  });
+}
+
+export function analyzeByImageWithBarcode(
+  files: File[],
+  region: string,
+  itemName = "",
+  barcode = "",
+  token?: string | null
+): Promise<AnalyzeResult> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  formData.append("region", region);
+  if (itemName.trim()) {
+    formData.append("itemName", itemName.trim());
+  }
+  if (barcode.trim()) {
+    formData.append("barcode", barcode.trim());
   }
 
   return request<AnalyzeResult>("/api/analyze/image", {
@@ -90,5 +114,27 @@ export function deleteLogs(token: string): Promise<{ deleted: number }> {
   return request<{ deleted: number }>("/api/logs", {
     method: "DELETE",
     headers: authHeaders(token)
+  });
+}
+
+export function submitFeedback(payload: FeedbackPayload, token?: string | null): Promise<FeedbackRecord> {
+  return request<FeedbackRecord>("/api/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getReviewQueue(token: string, status = "pending"): Promise<ReviewQueueItem[]> {
+  return request<ReviewQueueItem[]>(`/api/review-queue?status=${encodeURIComponent(status)}`, {
+    headers: authHeaders(token)
+  });
+}
+
+export function updateReviewQueueStatus(reviewId: number, status: string, token: string): Promise<ReviewQueueItem> {
+  return request<ReviewQueueItem>(`/api/review-queue/${reviewId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ status })
   });
 }

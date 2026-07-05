@@ -7,9 +7,10 @@ import { GoogleLoginButton } from "@/components/GoogleLoginButton";
 import { ImageUpload } from "@/components/ImageUpload";
 import { RegionSelect } from "@/components/RegionSelect";
 import { ResultCard } from "@/components/ResultCard";
+import { ReviewQueuePanel } from "@/components/ReviewQueuePanel";
 import { TextQueryForm } from "@/components/TextQueryForm";
 import { UsageLogList } from "@/components/UsageLogList";
-import { analyzeByImage, analyzeByText, deleteLogs, getLogs, saveLog } from "@/lib/api";
+import { analyzeByImageWithBarcode, analyzeByText, deleteLogs, getLogs, saveLog } from "@/lib/api";
 import type { AnalyzeResult, AuthSession, UsageLog } from "@/lib/types";
 
 const SESSION_STORAGE_KEY = "can-i-auth-session";
@@ -17,7 +18,8 @@ const SESSION_STORAGE_KEY = "can-i-auth-session";
 export default function Home() {
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState("서울특별시 강남구");
-  const [file, setFile] = useState<File | null>(null);
+  const [barcode, setBarcode] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -39,8 +41,8 @@ export default function Home() {
     getLogs(session?.token).then(setLogs).catch(() => setLogs([]));
   }, [session?.token]);
 
-  function analyzeImage(fileToAnalyze: File) {
-    return analyzeByImage(fileToAnalyze, region, query.trim(), session?.token);
+  function analyzeImage(filesToAnalyze: File[]) {
+    return analyzeByImageWithBarcode(filesToAnalyze, region, query.trim(), barcode.trim(), session?.token);
   }
 
   function handleLogin(nextSession: AuthSession) {
@@ -66,17 +68,19 @@ export default function Home() {
     event.preventDefault();
     setError("");
 
-    if (!file && !query.trim()) {
+    if (!files.length && !query.trim()) {
       setError("사진을 선택하거나 물건 이름을 입력해 주세요.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const analyzed = file ? await analyzeImage(file) : await analyzeByText(query.trim(), region);
-      setResult(analyzed);
-      if (!file) {
-        await saveLog(analyzed, session?.token);
+      const analyzed = files.length ? await analyzeImage(files) : await analyzeByText(query.trim(), region);
+      if (!files.length) {
+        const log = await saveLog(analyzed, session?.token);
+        setResult({ ...analyzed, logId: log.id });
+      } else {
+        setResult(analyzed);
       }
       setLogs(await getLogs(session?.token));
     } catch (caught) {
@@ -104,9 +108,19 @@ export default function Home() {
 
             <form onSubmit={handleAnalyze} className="rounded-lg border border-stone-200 bg-white/90 p-5 shadow-sm backdrop-blur">
               <div className="grid gap-5">
-                <ImageUpload file={file} onChange={setFile} />
+                <ImageUpload files={files} onChange={setFiles} />
                 <RegionSelect value={region} onChange={setRegion} />
                 <TextQueryForm value={query} onChange={setQuery} />
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-ink">바코드 번호</span>
+                  <input
+                    value={barcode}
+                    onChange={(event) => setBarcode(event.target.value)}
+                    placeholder="예: 8801234567890"
+                    inputMode="numeric"
+                    className="h-12 w-full rounded-md border border-stone-300 bg-white px-4 text-base outline-none transition placeholder:text-stone-400 focus:border-mint focus:ring-4 focus:ring-mint/15"
+                  />
+                </label>
                 {error ? (
                   <div className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -118,18 +132,19 @@ export default function Home() {
                   disabled={isLoading}
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-ink px-5 text-base font-bold text-white transition hover:bg-mint disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : file ? <Camera className="h-5 w-5" aria-hidden /> : <Search className="h-5 w-5" aria-hidden />}
+                  {isLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : files.length ? <Camera className="h-5 w-5" aria-hidden /> : <Search className="h-5 w-5" aria-hidden />}
                   분석하기
                 </button>
               </div>
             </form>
 
             <UsageLogList logs={logs} isLoggedIn={Boolean(session)} onDeleteAll={handleDeleteLogs} />
+            <ReviewQueuePanel token={session?.token} />
           </div>
 
           <div className="md:sticky md:top-6">
             {result ? (
-              <ResultCard result={result} />
+              <ResultCard result={result} token={session?.token} />
             ) : (
               <section className="rounded-lg border border-stone-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-bold text-ink">사진을 찍으면 바로 판단합니다</h2>

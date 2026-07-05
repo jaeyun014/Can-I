@@ -17,7 +17,8 @@ def normalize_image_input(vision: VisionResult, ocr: OCRResult, region: str, use
         material = vision.detectedMaterial
         matched_rule = f"{material}_from_vision"
 
-    item_name = user_query.strip() or (vision.itemName if vision.itemName != "알 수 없는 물건" else "알 수 없는 물건")
+    trimmed_user_query = user_query.strip()
+    item_name = trimmed_user_query or (vision.itemName if vision.itemName != "알 수 없는 물건" else "알 수 없는 물건")
     ocr_summary = ocr.rawText or "OCR에서 명확한 문구를 찾지 못했습니다."
     vision_summary = vision.notes or "Vision 분석 근거가 없습니다."
 
@@ -28,7 +29,11 @@ def normalize_image_input(vision: VisionResult, ocr: OCRResult, region: str, use
         region=region,
         ocrText=ocr.rawText,
         safetyHints=ocr.safetyHints,
-        confidence=vision.confidence,
+        userQuery=trimmed_user_query,
+        visionItemName=vision.itemName,
+        visionMaterial=vision.detectedMaterial,
+        visionConfidence=vision.confidence,
+        ocrMaterialHints=ocr.materialHints,
         evidence=Evidence(
             vision=vision_summary,
             ocr=ocr_summary,
