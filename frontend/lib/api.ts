@@ -36,11 +36,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function analyzeByText(query: string, region: string): Promise<AnalyzeResult> {
+export function analyzeByText(query: string, region: string, forceTargetType?: "FOOD" | "MATERIAL_OBJECT"): Promise<AnalyzeResult> {
   return request<AnalyzeResult>("/api/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, region })
+    body: JSON.stringify({ query, region, forceTargetType })
   });
 }
 
@@ -64,6 +64,7 @@ export function analyzeByImageWithBarcode(
   region: string,
   itemName = "",
   barcode = "",
+  forceTargetType?: "FOOD" | "MATERIAL_OBJECT",
   token?: string | null
 ): Promise<AnalyzeResult> {
   const formData = new FormData();
@@ -74,6 +75,9 @@ export function analyzeByImageWithBarcode(
   }
   if (barcode.trim()) {
     formData.append("barcode", barcode.trim());
+  }
+  if (forceTargetType) {
+    formData.append("forceTargetType", forceTargetType);
   }
 
   return request<AnalyzeResult>("/api/analyze/image", {
@@ -97,7 +101,9 @@ export function saveLog(result: AnalyzeResult, token?: string | null): Promise<U
       itemName: result.itemName,
       detectedMaterial: result.detectedMaterial,
       region: result.region,
-      overallRisk: result.overallRisk
+      overallRisk: result.overallRisk,
+      targetType: result.targetType,
+      decisions: result.decisions
     })
   });
 }

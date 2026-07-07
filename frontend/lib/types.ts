@@ -1,4 +1,5 @@
 export type RiskStatus = "SAFE" | "WARNING" | "DANGER";
+export type TargetType = "FOOD" | "MATERIAL_OBJECT" | "AMBIGUOUS" | "UNKNOWN";
 
 export type Decision = {
   status: RiskStatus;
@@ -7,6 +8,8 @@ export type Decision = {
   reason: string;
   why: string;
   alternative: string;
+  category?: string;
+  instruction?: string;
 };
 
 export type Disposal = {
@@ -16,9 +19,10 @@ export type Disposal = {
 };
 
 export type Evidence = {
-  vision: string;
-  ocr: string;
-  rule: string;
+  vision?: string;
+  ocr?: string;
+  rule?: string;
+  [key: string]: unknown;
 };
 
 export type ConfidenceLevel = "LOW" | "MEDIUM" | "HIGH";
@@ -76,8 +80,12 @@ export type AdditionalCaptureRequest = {
 
 export type AnalyzeResult = {
   logId?: number | null;
+  targetType: TargetType;
   itemName: string;
+  summary?: string;
   detectedMaterial: string;
+  materialCode?: string;
+  contaminationLevel?: "CLEAN" | "LIGHT_CONTAMINATION" | "HEAVY_CONTAMINATION" | "UNKNOWN_CONTAMINATION" | "";
   objectType?: string;
   ocrText: string;
   region: string;
@@ -91,6 +99,8 @@ export type AnalyzeResult = {
   normalized?: Record<string, unknown>;
   additionalCaptureRequest?: AdditionalCaptureRequest;
   versions?: Record<string, string>;
+  options?: { type: "FOOD" | "MATERIAL_OBJECT"; label: string }[];
+  message?: string;
 };
 
 export type FeedbackPayload = {
@@ -125,10 +135,13 @@ export type ReviewQueueItem = {
 
 export type UsageLog = {
   id: number;
+  targetType: TargetType;
   itemName: string;
   detectedMaterial: string;
   region: string;
   overallRisk: RiskStatus;
+  decisions?: Record<string, unknown>;
+  analysisResult?: AnalyzeResult | null;
   createdAt: string;
   userEmail?: string | null;
 };

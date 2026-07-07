@@ -48,14 +48,18 @@ def init_db() -> None:
                 user_email TEXT,
                 input_type TEXT NOT NULL DEFAULT 'unknown',
                 input_text TEXT NOT NULL DEFAULT '',
+                target_type TEXT NOT NULL DEFAULT 'UNKNOWN',
                 item_name TEXT NOT NULL,
                 detected_material TEXT NOT NULL,
                 region TEXT NOT NULL,
                 overall_risk TEXT NOT NULL,
+                decisions_json TEXT NOT NULL DEFAULT '{}',
                 created_at TEXT NOT NULL
             )
             """
         )
+        _ensure_column(connection, "usage_logs", "target_type", "TEXT NOT NULL DEFAULT 'UNKNOWN'")
+        _ensure_column(connection, "usage_logs", "decisions_json", "TEXT NOT NULL DEFAULT '{}'")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS analysis_results (
@@ -218,19 +222,21 @@ def create_usage_log(
         cursor = connection.execute(
             """
             INSERT INTO usage_logs (
-                user_email, input_type, input_text, item_name, detected_material,
-                region, overall_risk, created_at
+                user_email, input_type, input_text, target_type, item_name, detected_material,
+                region, overall_risk, decisions_json, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_email,
                 input_type,
                 input_text,
+                payload.targetType,
                 payload.itemName,
                 payload.detectedMaterial,
                 payload.region,
                 payload.overallRisk,
+                _dumps(payload.decisions),
                 created_at.isoformat(),
             ),
         )
@@ -333,9 +339,11 @@ def list_usage_logs(user_email: Optional[str] = None, limit: int = 20) -> list[U
         if user_email:
             rows = connection.execute(
                 """
-                SELECT * FROM usage_logs
-                WHERE user_email = ?
-                ORDER BY datetime(created_at) DESC, id DESC
+                SELECT ul.*, ar.result_json
+                FROM usage_logs ul
+                LEFT JOIN analysis_results ar ON ar.usage_log_id = ul.id
+                WHERE ul.user_email = ?
+                ORDER BY datetime(ul.created_at) DESC, ul.id DESC
                 LIMIT ?
                 """,
                 (user_email, limit),
@@ -343,9 +351,11 @@ def list_usage_logs(user_email: Optional[str] = None, limit: int = 20) -> list[U
         else:
             rows = connection.execute(
                 """
-                SELECT * FROM usage_logs
-                WHERE user_email IS NULL
-                ORDER BY datetime(created_at) DESC, id DESC
+                SELECT ul.*, ar.result_json
+                FROM usage_logs ul
+                LEFT JOIN analysis_results ar ON ar.usage_log_id = ul.id
+                WHERE ul.user_email IS NULL
+                ORDER BY datetime(ul.created_at) DESC, ul.id DESC
                 LIMIT ?
                 """,
                 (limit,),
@@ -372,15 +382,30 @@ def delete_usage_logs(user_email: str) -> int:
 
 
 def _row_to_usage_log(row: sqlite3.Row) -> UsageLog:
+    analysis_result = None
+    if "result_json" in row.keys() and row["result_json"]:
+        try:
+            analysis_result = AnalyzeResponse.model_validate_json(row["result_json"])
+        except Exception:
+            analysis_result = None
     return UsageLog(
         id=row["id"],
         itemName=row["item_name"],
         detectedMaterial=row["detected_material"],
         region=row["region"],
         overallRisk=row["overall_risk"],
+        targetType=row["target_type"] if "target_type" in row.keys() else "UNKNOWN",
+        decisions=json.loads(row["decisions_json"] or "{}") if "decisions_json" in row.keys() else {},
         createdAt=datetime.fromisoformat(row["created_at"]),
         userEmail=row["user_email"],
+        analysisResult=analysis_result,
     )
+
+
+def _ensure_column(connection: sqlite3.Connection, table: str, column: str, declaration: str) -> None:
+    columns = {row["name"] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in columns:
+        connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
 
 
 def _maybe_enqueue_review(

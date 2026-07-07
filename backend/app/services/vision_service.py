@@ -13,6 +13,11 @@ def _fallback_result(notes: str) -> VisionResult:
     return VisionResult(
         itemName="플라스틱 배달 용기",
         detectedMaterial="pp",
+        materialCodeGuess="PP",
+        hasFoodResidue=False,
+        contaminationLevel="UNKNOWN_CONTAMINATION",
+        isStandaloneFood=False,
+        hasContainerOrPackage=True,
         visibleLabels=[],
         objectType="food_container",
         confidence=0.0,
@@ -36,12 +41,32 @@ async def analyze_image_with_vision(image_bytes: bytes, content_type: str | None
         "properties": {
             "itemName": {"type": "string"},
             "detectedMaterial": {"type": "string"},
+            "materialCodeGuess": {"type": "string"},
+            "hasFoodResidue": {"type": "boolean"},
+            "contaminationLevel": {
+                "type": "string",
+                "enum": ["CLEAN", "LIGHT_CONTAMINATION", "HEAVY_CONTAMINATION", "UNKNOWN_CONTAMINATION"],
+            },
+            "isStandaloneFood": {"type": "boolean"},
+            "hasContainerOrPackage": {"type": "boolean"},
             "visibleLabels": {"type": "array", "items": {"type": "string"}},
             "objectType": {"type": "string"},
             "confidence": {"type": "number"},
             "notes": {"type": "string"},
         },
-        "required": ["itemName", "detectedMaterial", "visibleLabels", "objectType", "confidence", "notes"],
+        "required": [
+            "itemName",
+            "detectedMaterial",
+            "materialCodeGuess",
+            "hasFoodResidue",
+            "contaminationLevel",
+            "isStandaloneFood",
+            "hasContainerOrPackage",
+            "visibleLabels",
+            "objectType",
+            "confidence",
+            "notes",
+        ],
     }
 
     try:
@@ -54,8 +79,10 @@ async def analyze_image_with_vision(image_bytes: bytes, content_type: str | None
                         {
                             "type": "input_text",
                             "text": (
-                                "이미지 속 물건과 재질 표기를 추출해 JSON으로만 답하세요. "
+                                "이미지 속 물건, 재질 표기, 음식물 오염 여부를 추출해 JSON으로만 답하세요. "
                                 "최종 안전 판단은 하지 마세요. 음식으로 보이면 objectType은 food로, detectedMaterial은 food로 두세요. "
+                                "용기나 포장재가 함께 보이면 hasContainerOrPackage는 true, isStandaloneFood는 false로 두세요. "
+                                "오염도는 CLEAN, LIGHT_CONTAMINATION, HEAVY_CONTAMINATION, UNKNOWN_CONTAMINATION 중 하나로 추정하세요. "
                                 "재질이 불확실하면 detectedMaterial은 unknown으로 두세요. "
                                 "가능한 재질 값: aluminum, pp, pet, ps, paper_coated, glass, lithium_battery, wood, food, unknown."
                             ),

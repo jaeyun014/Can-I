@@ -5,9 +5,10 @@ type Props = {
   logs: UsageLog[];
   isLoggedIn?: boolean;
   onDeleteAll?: () => void;
+  onOpenResult?: (result: UsageLog["analysisResult"]) => void;
 };
 
-export function UsageLogList({ logs, isLoggedIn, onDeleteAll }: Props) {
+export function UsageLogList({ logs, isLoggedIn, onDeleteAll, onOpenResult }: Props) {
   return (
     <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -34,9 +35,16 @@ export function UsageLogList({ logs, isLoggedIn, onDeleteAll }: Props) {
           {logs.map((log) => (
             <li key={log.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div>
-                <p className="font-semibold text-ink">{log.itemName}</p>
+                <button
+                  type="button"
+                  onClick={() => log.analysisResult && onOpenResult?.(log.analysisResult)}
+                  disabled={!log.analysisResult}
+                  className="text-left font-semibold text-ink transition enabled:hover:text-mint disabled:cursor-default"
+                >
+                  {log.itemName}
+                </button>
                 <p className="mt-1 text-xs text-stone-500">
-                  {log.region} · {new Date(log.createdAt).toLocaleString("ko-KR")}
+                  {log.targetType} · {log.region} · {new Date(log.createdAt).toLocaleString("ko-KR")}
                 </p>
               </div>
               <RiskBadge status={log.overallRisk} />

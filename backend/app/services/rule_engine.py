@@ -209,7 +209,9 @@ def analyze_food_item(item_name: str, region: str, object_type: str = "", detect
     }
     highest_risk = max((decision["status"] for decision in decisions.values()), key=lambda status: RISK_ORDER[status])
     return AnalyzeResponse(
+        targetType="FOOD",
         itemName=food_rule["itemName"],
+        summary="음식 기준으로 냉장, 냉동, 폐기 방법을 판단했습니다.",
         detectedMaterial="food",
         objectType=object_type or "food",
         ocrText=ocr_text,
@@ -259,8 +261,11 @@ def analyze_item(item_name: str, region: str, detected_material: str | None = No
 
     category = rule["disposal"]["category"]
     result = AnalyzeResponse(
+        targetType="MATERIAL_OBJECT",
         itemName=rule["itemName"],
+        summary="용기/재질 기준으로 가열, 냉동, 세척, 분리배출을 판단했습니다.",
         detectedMaterial=rule["detectedMaterial"],
+        materialCode=rule["detectedMaterial"].upper() if rule["detectedMaterial"] != "unknown" else "",
         ocrText=ocr_text,
         region=region,
         overallRisk=highest_risk,

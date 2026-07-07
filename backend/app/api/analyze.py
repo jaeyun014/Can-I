@@ -12,9 +12,11 @@ from app.services.conflict_detector import detect_conflicts
 from app.services.evidence_fusion_service import EvidenceRecord, fuse_evidence
 from app.services.image_quality_service import inspect_multiple_images
 from app.services.input_normalizer import normalize_image_input
+from app.services.food_engine import analyze_food
+from app.services.material_engine import analyze_material
 from app.services.material_classifier_service import classify_material_candidates
 from app.services.ocr_service import extract_text_from_image_bytes
-from app.services.rule_engine import analyze_item, analyze_normalized
+from app.services.target_classifier import TargetClassification, classify_target
 from app.services.vision_service import analyze_image_with_vision
 
 router = APIRouter()
@@ -22,7 +24,14 @@ router = APIRouter()
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_text(payload: TextAnalyzeRequest) -> AnalyzeResponse:
-    result = analyze_item(item_name=payload.query, region=payload.region)
+    classification = classify_target(user_input=payload.query, force_target_type=payload.forceTargetType)
+    normalized = normalize_image_input(
+        vision=None,
+        ocr=None,
+        region=payload.region,
+        user_query=payload.query,
+    )
+    result = _route_by_target(classification, normalized)
     result.versions = _versions()
     return result
 
@@ -34,6 +43,7 @@ async def analyze_image(
     region: str = Form(default="서울"),
     itemName: str = Form(default=""),
     barcode: str = Form(default=""),
+    forceTargetType: str = Form(default=""),
     user: Optional[AuthUser] = Depends(get_optional_user),
 ) -> AnalyzeResponse:
     upload_files = files or ([file] if file else [])
@@ -72,7 +82,14 @@ async def analyze_image(
         normalized.material = material_fusion.selectedValue
     if object_fusion.selectedValue != "unknown" and not itemName.strip():
         normalized.itemName = object_fusion.selectedValue
-    result = analyze_normalized(normalized)
+    classification = classify_target(
+        user_input=itemName,
+        vision=vision_result,
+        ocr=ocr_result,
+        barcode_product=product if isinstance(product, dict) else None,
+        force_target_type=forceTargetType or None,
+    )
+    result = _route_by_target(classification, normalized)
     result.imageQuality = image_quality
     result.detectedObjects = _detected_objects(result, vision_result, classifier_result)
     result.normalized = {
@@ -83,6 +100,7 @@ async def analyze_image(
         "lidMaterial": "unknown",
         "containsFood": result.detectedMaterial == "food" or "food" in result.objectType,
         "containsMetal": result.detectedMaterial in {"aluminum", "metal", "lithium_battery"},
+        "contaminationLevel": result.contaminationLevel,
         "imageCount": len(image_payloads),
         "barcode": barcode_result.get("barcode", ""),
         "materialCandidates": material_fusion.candidates,
@@ -104,6 +122,8 @@ async def analyze_image(
             detectedMaterial=result.detectedMaterial,
             region=result.region,
             overallRisk=result.overallRisk,
+            targetType=result.targetType,
+            decisions={key: value.model_dump() for key, value in result.decisions.items()},
         ),
         user_email=user.email if user else None,
         input_type="image",
@@ -114,6 +134,53 @@ async def analyze_image(
         conflicts=conflicts,
     )
     return result
+
+
+def _route_by_target(classification: TargetClassification, normalized) -> AnalyzeResponse:
+    previous_evidence = normalized.evidence
+    normalized.evidence = {
+        "classification": {
+            "targetType": classification.targetType,
+            "confidenceLevel": classification.confidenceLevel,
+            "reason": classification.reason,
+            "evidence": classification.evidence,
+        },
+        "vision": getattr(previous_evidence, "vision", ""),
+        "ocr": getattr(previous_evidence, "ocr", ""),
+        "rule": getattr(previous_evidence, "rule", ""),
+    }
+    if classification.targetType == "FOOD":
+        return analyze_food(normalized)
+    if classification.targetType == "MATERIAL_OBJECT":
+        return analyze_material(normalized)
+    if classification.targetType == "AMBIGUOUS":
+        return AnalyzeResponse(
+            targetType="AMBIGUOUS",
+            itemName=normalized.itemName,
+            summary="음식과 용기/재질 신호가 함께 감지되었습니다.",
+            detectedMaterial=normalized.material,
+            materialCode=normalized.material.upper() if normalized.material != "unknown" else "",
+            objectType=normalized.objectType,
+            ocrText=normalized.ocrText,
+            region=normalized.region,
+            overallRisk="WARNING",
+            evidence=classification.evidence,
+            options=classification.options or [],
+            message=classification.message,
+        )
+    return AnalyzeResponse(
+        targetType="UNKNOWN",
+        itemName=normalized.itemName,
+        summary="분류할 근거가 충분하지 않습니다.",
+        detectedMaterial=normalized.material,
+        materialCode=normalized.material.upper() if normalized.material != "unknown" else "",
+        objectType=normalized.objectType,
+        ocrText=normalized.ocrText,
+        region=normalized.region,
+        overallRisk="WARNING",
+        evidence=classification.evidence,
+        message="대상을 음식 또는 용기/재질로 분류할 수 없습니다. 사진이나 설명을 더 구체적으로 입력해 주세요.",
+    )
 
 
 def _versions(barcode_version: str = "0.1.0", classifier_version: str = "0.1.0") -> dict[str, str]:

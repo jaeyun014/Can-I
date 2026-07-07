@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
 RiskStatus = Literal["SAFE", "WARNING", "DANGER"]
 ConfidenceLevel = Literal["LOW", "MEDIUM", "HIGH"]
+TargetType = Literal["FOOD", "MATERIAL_OBJECT", "AMBIGUOUS", "UNKNOWN"]
 
 
 class TextAnalyzeRequest(BaseModel):
     query: str = Field(..., min_length=1, examples=["알루미늄 포일"])
     region: str = Field(default="서울", examples=["서울"])
+    forceTargetType: Optional[Literal["FOOD", "MATERIAL_OBJECT"]] = None
 
 
 class Decision(BaseModel):
@@ -21,12 +23,14 @@ class Decision(BaseModel):
     reason: str
     why: str
     alternative: str
+    category: str = ""
+    instruction: str = ""
 
 
 class Disposal(BaseModel):
-    category: str
-    regionRule: str
-    instruction: str
+    category: str = "확인 필요"
+    regionRule: str = ""
+    instruction: str = ""
 
 
 class Evidence(BaseModel):
@@ -64,16 +68,22 @@ class ConfidenceReport(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     logId: Optional[int] = None
-    itemName: str
-    detectedMaterial: str
+    targetType: TargetType = "UNKNOWN"
+    itemName: str = ""
+    summary: str = ""
+    detectedMaterial: str = "unknown"
+    materialCode: str = ""
+    contaminationLevel: str = ""
     objectType: str = ""
     ocrText: str = ""
-    region: str
+    region: str = "서울"
     confidence: ConfidenceReport = Field(default_factory=ConfidenceReport)
-    evidence: Evidence = Field(default_factory=Evidence)
-    overallRisk: RiskStatus
-    decisions: dict[str, Decision]
-    disposal: Disposal
+    evidence: Union[Evidence, dict[str, Any]] = Field(default_factory=Evidence)
+    overallRisk: RiskStatus = "WARNING"
+    decisions: dict[str, Decision] = Field(default_factory=dict)
+    disposal: Disposal = Field(default_factory=Disposal)
+    options: list[dict[str, str]] = Field(default_factory=list)
+    message: str = ""
     imageQuality: dict[str, Any] = Field(default_factory=dict)
     detectedObjects: list[dict[str, Any]] = Field(default_factory=list)
     normalized: dict[str, Any] = Field(default_factory=dict)
@@ -84,6 +94,11 @@ class AnalyzeResponse(BaseModel):
 class VisionResult(BaseModel):
     itemName: str = "알 수 없는 물건"
     detectedMaterial: str = "unknown"
+    materialCodeGuess: str = ""
+    hasFoodResidue: bool = False
+    contaminationLevel: str = "UNKNOWN_CONTAMINATION"
+    isStandaloneFood: bool = False
+    hasContainerOrPackage: bool = False
     visibleLabels: list[str] = Field(default_factory=list)
     objectType: str = "unknown"
     confidence: float = 0.0
@@ -107,11 +122,15 @@ class NormalizedInput(BaseModel):
     userQuery: str = ""
     visionItemName: str = ""
     visionMaterial: str = "unknown"
+    visionHasContainerOrPackage: bool = False
+    visionIsStandaloneFood: bool = False
+    visionHasFoodResidue: bool = False
     visionConfidence: float = 0.0
     ocrMaterialHints: list[str] = Field(default_factory=list)
     barcodeProductName: str = ""
     barcodeMaterial: str = ""
-    evidence: Evidence = Field(default_factory=Evidence)
+    evidence: Union[Evidence, dict[str, Any]] = Field(default_factory=Evidence)
+    contaminationLevel: str = "UNKNOWN_CONTAMINATION"
 
 
 class UsageLogCreate(BaseModel):
@@ -119,12 +138,15 @@ class UsageLogCreate(BaseModel):
     detectedMaterial: str
     region: str
     overallRisk: RiskStatus
+    targetType: TargetType = "UNKNOWN"
+    decisions: dict[str, Any] = Field(default_factory=dict)
 
 
 class UsageLog(UsageLogCreate):
     id: int
     createdAt: datetime
     userEmail: Optional[str] = None
+    analysisResult: Optional[AnalyzeResponse] = None
 
 
 class FeedbackCreate(BaseModel):

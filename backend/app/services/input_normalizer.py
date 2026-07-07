@@ -3,7 +3,9 @@ from __future__ import annotations
 from app.models.schemas import Evidence, NormalizedInput, OCRResult, VisionResult
 
 
-def normalize_image_input(vision: VisionResult, ocr: OCRResult, region: str, user_query: str = "") -> NormalizedInput:
+def normalize_image_input(vision: VisionResult | None, ocr: OCRResult | None, region: str, user_query: str = "") -> NormalizedInput:
+    vision = vision or VisionResult()
+    ocr = ocr or OCRResult()
     material = "unknown"
     matched_rule = "unknown_fallback"
 
@@ -32,8 +34,12 @@ def normalize_image_input(vision: VisionResult, ocr: OCRResult, region: str, use
         userQuery=trimmed_user_query,
         visionItemName=vision.itemName,
         visionMaterial=vision.detectedMaterial,
+        visionHasContainerOrPackage=vision.hasContainerOrPackage,
+        visionIsStandaloneFood=vision.isStandaloneFood,
+        visionHasFoodResidue=vision.hasFoodResidue,
         visionConfidence=vision.confidence,
         ocrMaterialHints=ocr.materialHints,
+        contaminationLevel=vision.contaminationLevel,
         evidence=Evidence(
             vision=vision_summary,
             ocr=ocr_summary,

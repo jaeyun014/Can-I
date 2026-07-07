@@ -42,7 +42,11 @@ export default function Home() {
   }, [session?.token]);
 
   function analyzeImage(filesToAnalyze: File[]) {
-    return analyzeByImageWithBarcode(filesToAnalyze, region, query.trim(), barcode.trim(), session?.token);
+    return analyzeByImageWithBarcode(filesToAnalyze, region, query.trim(), barcode.trim(), undefined, session?.token);
+  }
+
+  function analyzeImageWithTarget(targetType: "FOOD" | "MATERIAL_OBJECT") {
+    return analyzeByImageWithBarcode(files, region, query.trim(), barcode.trim(), targetType, session?.token);
   }
 
   function handleLogin(nextSession: AuthSession) {
@@ -90,6 +94,27 @@ export default function Home() {
     }
   }
 
+  async function handleChooseTarget(targetType: "FOOD" | "MATERIAL_OBJECT") {
+    setError("");
+    setIsLoading(true);
+    try {
+      const analyzed = files.length
+        ? await analyzeImageWithTarget(targetType)
+        : await analyzeByText(query.trim(), region, targetType);
+      if (!files.length) {
+        const log = await saveLog(analyzed, session?.token);
+        setResult({ ...analyzed, logId: log.id });
+      } else {
+        setResult(analyzed);
+      }
+      setLogs(await getLogs(session?.token));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "분석 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-md md:max-w-6xl">
@@ -98,9 +123,9 @@ export default function Home() {
             <div className="pt-2">
               <p className="text-2xl font-black text-ink">Can I?</p>
               <h1 className="mt-4 text-4xl font-black leading-tight text-ink sm:text-5xl">이거 해도 돼?</h1>
-              <p className="mt-4 text-lg font-semibold text-stone-700">사진 한 장으로 생활 속 안전 판단을 도와드립니다.</p>
+              <p className="mt-4 text-lg font-semibold text-stone-700">사진 한 장으로 재질, 오염 여부, 분리수거 방법을 알려드립니다.</p>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base sm:leading-7">
-                전자레인지, 에어프라이어, 냉동보관, 식기세척기, 분리수거까지 한 번에 확인하세요.
+                전자레인지, 에어프라이어, 냉동 가능 여부도 함께 확인할 수 있어요.
               </p>
             </div>
 
@@ -138,13 +163,13 @@ export default function Home() {
               </div>
             </form>
 
-            <UsageLogList logs={logs} isLoggedIn={Boolean(session)} onDeleteAll={handleDeleteLogs} />
+            <UsageLogList logs={logs} isLoggedIn={Boolean(session)} onDeleteAll={handleDeleteLogs} onOpenResult={(savedResult) => savedResult && setResult(savedResult)} />
             <ReviewQueuePanel token={session?.token} />
           </div>
 
           <div className="md:sticky md:top-6">
             {result ? (
-              <ResultCard result={result} token={session?.token} />
+              <ResultCard result={result} token={session?.token} onChooseTarget={handleChooseTarget} />
             ) : (
               <section className="rounded-lg border border-stone-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-bold text-ink">사진을 찍으면 바로 판단합니다</h2>
