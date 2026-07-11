@@ -14,3 +14,6 @@ status:
 
 logs:
 	./scripts/dev.sh logs
+
+git:
+	./efaef
