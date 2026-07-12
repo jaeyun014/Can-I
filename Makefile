@@ -14,5 +14,3 @@ status:
 
 logs:
 	./scripts/dev.sh logs
-fxxk:
-	./envfa
